@@ -1,0 +1,48 @@
+---
+
+- name: "Provisionando Sistema {{ codigo }}"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    rundeck: "http://10.30.182.171/rundeck"
+    user: admin
+    pwd: admin
+    project_name: "Automacao"
+
+  tasks:
+
+    - name: Login
+      uri:
+        url: "{{ rundeck }}/j_security_check"
+        method: POST
+        status_code: 302
+        body: "j_username={{ user }}&j_password={{ pwd }}"
+      register: login
+
+    - name: Get Projects
+      uri:
+        url: "{{ rundeck }}/api/1/projects"
+        method: GET
+        HEADER_accept: "application/json"
+        headers:
+          Cookie: "{{ login.set_cookie }}"
+      register: projects
+
+    - name: "All jobs for {{ project_name }}"
+      uri:
+        url: "{{ rundeck }}/api/14/project/{{ project_name }}/jobs"
+        method: GET
+        HEADER_accept: "application/json"
+        headers:
+          Cookie: "{{ login.set_cookie }}"
+      register: "array"
+
+    - name: "Get Job ID for {{ job_name }}"
+      uri:
+        url: "{{ rundeck }}/api/20/job/{{ item.id }}/executions"
+        method: POST
+        HEADER_accept: "application/json"
+        headers:
+          Cookie: "{{ login.set_cookie }}"
+      when: item.name == "{{ job_name }}"
+      with_items: "{{ array.json }}"
